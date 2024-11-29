@@ -1,74 +1,48 @@
-// FarmTrace Smart Contract
-(define-constant ERR_NOT_REGISTERED 100)
-(define-constant ERR_ALREADY_REGISTERED 101)
-(define-constant ERR_BATCH_NOT_FOUND 102)
-(define-constant ERR_NOT_AUTHORIZED 103)
+;; RecipeToken - A simple Clarity smart contract for storing favorite recipes
 
-(define-data-var farmer-registry (map principal {location: (string-ascii 50), certifications: (string-ascii 50)}))
-(define-data-var produce-batches (map uint {owner: principal, details: (string-ascii 100), status: (string-ascii 20), history: (list 50 (string-ascii 100))}))
+;; Define constants for error codes
+(define-constant ERR-ALREADY-EXISTS u1)
+(define-constant ERR-NOT-FOUND u2)
+(define-constant ERR-INVALID-INPUT u3)
 
-(define-data-var next-batch-id uint u1)
+;; Define the maximum length for a recipe name
+(define-constant MAX-RECIPE-LENGTH u50)
 
-// Register a farmer
-(define-public (register-farmer (location (string-ascii 50)) (certifications (string-ascii 50)))
-  (if (map-get? farmer-registry tx-sender)
-      (err ERR_ALREADY_REGISTERED)
+;; Define the map to store recipes
+(define-map recipes principal (string-utf8 50))
+
+;; Function to add a new recipe
+(define-public (add-recipe (user principal) (recipe-name (string-utf8 50)))
+  (let ((name-length (len recipe-name)))
+    (if (and (> name-length u0) (<= name-length MAX-RECIPE-LENGTH))
+        (if (is-none (map-get? recipes user))
+            (begin
+              (map-set recipes user recipe-name)
+              (ok "Recipe added successfully"))
+            (err ERR-ALREADY-EXISTS))
+        (err ERR-INVALID-INPUT))))
+
+;; Function to get a recipe
+(define-public (get-recipe (user principal))
+  (match (map-get? recipes user)
+    recipe (ok recipe)
+    (err ERR-NOT-FOUND)))
+
+;; Function to update a recipe
+(define-public (update-recipe (user principal) (recipe-name (string-utf8 50)))
+  (let ((name-length (len recipe-name)))
+    (if (and (> name-length u0) (<= name-length MAX-RECIPE-LENGTH))
+        (if (is-some (map-get? recipes user))
+            (begin
+              (map-set recipes user recipe-name)
+              (ok "Recipe updated successfully"))
+            (err ERR-NOT-FOUND))
+        (err ERR-INVALID-INPUT))))
+
+;; Function to delete a recipe
+(define-public (delete-recipe (user principal))
+  (if (is-some (map-get? recipes user))
       (begin
-        (map-set farmer-registry tx-sender {location: location, certifications: certifications})
-        (ok "Farmer registered successfully")
-      )
-  )
-)
-
-// Add a new produce batch
-(define-public (add-produce-batch (details (string-ascii 100)) (status (string-ascii 20)))
-  (if (map-get? farmer-registry tx-sender)
-      (let (
-            (batch-id (var-get next-batch-id))
-            (history (list u1 (concat "Batch created by farmer: " (principal-to-string tx-sender))))
-           )
-        (begin
-          (map-set produce-batches batch-id {owner: tx-sender, details: details, status: status, history: history})
-          (var-set next-batch-id (+ batch-id u1))
-          (ok batch-id)
-        )
-      )
-      (err ERR_NOT_REGISTERED)
-  )
-)
-
-// Transfer produce ownership
-(define-public (transfer-produce (batch-id uint) (new-owner principal) (status (string-ascii 20)))
-  (match (map-get produce-batches batch-id)
-    some-batch
-    (if (is-eq tx-sender (get owner some-batch))
-        (begin
-          (let (
-                (updated-history (append (get history some-batch) (list u1 (concat "Transferred to: " (principal-to-string new-owner)))))
-                (updated-batch {owner: new-owner, details: (get details some-batch), status: status, history: updated-history})
-               )
-            (map-set produce-batches batch-id updated-batch)
-            (ok "Transfer successful")
-          )
-        )
-        (err ERR_NOT_AUTHORIZED)
-    )
-    (err ERR_BATCH_NOT_FOUND)
-  )
-)
-
-// Get produce batch details
-(define-read-only (get-produce-batch (batch-id uint))
-  (match (map-get produce-batches batch-id)
-    some-batch (ok some-batch)
-    (err ERR_BATCH_NOT_FOUND)
-  )
-)
-
-// Get farmer details
-(define-read-only (get-farmer-details (farmer principal))
-  (match (map-get farmer-registry farmer)
-    some-farmer (ok some-farmer)
-    (err ERR_NOT_REGISTERED)
-  )
-)
+        (map-delete recipes user)
+        (ok "Recipe deleted successfully"))
+      (err ERR-NOT-FOUND)))
