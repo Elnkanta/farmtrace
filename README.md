@@ -9,6 +9,6 @@ FarmTrace is a simple blockchain app for managing favorite recipes. It allows us
 
 The app ensures:
 - Recipes are unique to each user.
-- Recipe names are limited to 50 characters.
+- Recipe names are limited to 50(fifty) characters.
 
 FarmTrace is built using Clarity smart contracts, ensuring secure and decentralized recipe storage.
