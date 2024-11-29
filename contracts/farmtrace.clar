@@ -1,4 +1,4 @@
-;; RecipeToken - it is a simple Clarity smart contract for storing favorite recipes
+;; RecipeToken - A simple Clarity smart contract for storing favorite recipes
 
 ;; Define constants for error codes
 (define-constant ERR-ALREADY-EXISTS u1)
